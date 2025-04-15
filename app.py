@@ -1,77 +1,56 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
-import pickle
+import joblib
+import re
 import os
-
 
 app = FastAPI()
 
-SUPPORTED_MODELS = {
-    1: {"file": "logistic_regression_hsd_model.pkl", "name": "Logistic Regression Model"},
-    2: {"file": "naive_bayes_hsd_model.pkl", "name": "Navie Bayes Model"},
-    3: {"file": "svm_hate_speech_model.pkl", "name": "Svm Model"},
-    4: {"file": "xgb_hsd_model.pkl", "name": "XgBoost Model"}
+# Load processors
+count_vectorizer = joblib.load("vectorizer/count_vectorizer.pkl")
+tfidf_transformer = joblib.load("vectorizer/tfidf_transformer.pkl")
+
+# Load models
+models = {
+    1: {"name": "SVM", "model": joblib.load("models/svm_hate_speech_model.pkl")},
+    2: {"name": "XGBoost", "model": joblib.load("models/xgb_hsd_model.pkl")},
+    3: {"name": "Logistic Regression", "model": joblib.load("models/logistic_regression_hsd_model.pkl")},
+    4: {"name": "Naive Bayes", "model": joblib.load("models/naive_bayes_hsd_model.pkl")},
 }
 
-# Load vectorizers (CountVectorizer, TfidfTransformer)
-try:
-    with open("vectorizer/count_vectorizer.pkl", "rb") as f:
-        count_vectorizer = pickle.load(f)
-    with open("vectorizer/tfidf_transformer.pkl", "rb") as f:
-        tfidf_transformer = pickle.load(f)
-except Exception as e:
-    raise RuntimeError(f"Failed to load vectorizers: {e}")
+class InputData(BaseModel):
+    text: str
+    model_id: int
 
-# Define the request body schema
-class PredictionRequest(BaseModel):
-    model_id: int  # Model ID as an integer
-    text: str      # The text for prediction
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r'@[A-Za-z0-9_]+', '', text)
+    text = re.sub(r'[^0-9A-Za-z \t]', ' ', text)
+    text = " ".join(text.split())
+    return text
 
-# Function to load the selected model
-def load_model(model_id):
-    # Ensure the model ID is valid
-    if model_id not in SUPPORTED_MODELS:
-        raise ValueError(f"Unsupported model ID: {model_id}")
-    
-    # Define the path to the model file
-    path = f"models/{SUPPORTED_MODELS[model_id]['file']}"
-    
-    # Check if the model file exists
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Model file not found: {path}")
-    
-    # Load and return the model
-    with open(path, "rb") as f:
-        return pickle.load(f)
+@app.get("/")
+def read_root():
+    return {"message": "Hate Speech Detection API is running."}
 
-# Prediction endpoint
-@app.post("/predict")
-def predict(req: PredictionRequest):
-    try:
-        # Load the model based on the model ID provided
-        model = load_model(req.model_id)
-        
-        # Vectorize the input text
-        count_features = count_vectorizer.transform([req.text])
-        tfidf_features = tfidf_transformer.transform(count_features)
-        
-        # Make the prediction
-        prediction = model.predict(tfidf_features)[0]
-        
-        # Return the prediction as a JSON response
-        return {
-            "model_id": req.model_id,
-            "is_hateful": int(prediction)  # Convert prediction to an integer (0 or 1)
-        }
-    
-    except Exception as e:
-        # Return error message if any exception occurs
-        return {"error": str(e)}
-
-# Endpoint to get the available models with both IDs and names
 @app.get("/models")
-def list_models():
-    # Return the model IDs and their names in a structured format
-    model_info = [{"model_id": model_id, "model_name": model_info["name"]} 
-                  for model_id, model_info in SUPPORTED_MODELS.items()]
-    return {"available_models": model_info}
+def get_models():
+    return {k: v["name"] for k, v in models.items()}
+
+@app.post("/predict")
+def predict(data: InputData):
+    if data.model_id not in models:
+        return {"error": "Invalid model ID"}
+
+    model = models[data.model_id]["model"]
+    text = preprocess(data.text)
+
+    count_vec = count_vectorizer.transform([text])
+    tfidf_vec = tfidf_transformer.transform(count_vec)
+
+    prediction = model.predict(tfidf_vec)[0]
+    result = "Hate Speech" if prediction == 1 else "Not Hate Speech"
+    return {
+        "model": models[data.model_id]["name"],
+        "prediction": result
+    }
