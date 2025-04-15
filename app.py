@@ -15,9 +15,9 @@ SUPPORTED_MODELS = {
 
 # Load vectorizers (CountVectorizer, TfidfTransformer)
 try:
-    with open("vectorizers/count_vectorizer.pkl", "rb") as f:
+    with open("vectorizer/count_vectorizer.pkl", "rb") as f:
         count_vectorizer = pickle.load(f)
-    with open("vectorizers/tfidf_transformer.pkl", "rb") as f:
+    with open("vectorizer/tfidf_transformer.pkl", "rb") as f:
         tfidf_transformer = pickle.load(f)
 except Exception as e:
     raise RuntimeError(f"Failed to load vectorizers: {e}")
