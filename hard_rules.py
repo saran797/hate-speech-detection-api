@@ -21,34 +21,11 @@ HARD_HATE_KEYWORDS = [
     "snowflake", "femboy", "crossdresser", "beta male", "alpha male", "mutt", "subhuman"
 ]
 
-HARD_HATE_PATTERNS = [
-    r"\bn[i1!|][gq9]{2}[a@]\b",         # nigga
-    r"\bn[i1!|][gq9]{2}er\b",           # nigger
-    r"\bf[a@][gq9]{2}[o0t]?\b",         # faggot
-    r"\bk[i1]ke\b",                     # kike
-    r"\bch[i1]nk\b",                    # chink
-    r"\bsp[i1]c\b",                     # spic
-    r"\br[e3]t[a@]rd\b",                # retard
-    r"\bp[a@]k[i1]\b",                  # paki
-    r"\bs[l1]ut\b",                     # slut
-    r"\bc[u@]nt\b",                     # cunt
-    r"\btw[a@]t\b",                     # twat
-    r"\bf[u@]ck\b",                     # fuck
-    r"\bwh[o0]re\b",                    # whore
-    r"\bc[o0]cksucker\b",               # cocksucker
-    r"\bshem[a@]le\b",                  # shemale
-    r"\bfudgepacker\b",                 # fudgepacker
-    r"\bp[e3]d[o0]\b",                  # pedo
-    r"\bgroomer\b"                      # groomer
-]
 
 def is_hard_hate(text: str) -> bool:
     """Returns True if any hardcoded slurs or patterns are found."""
     text = text.lower()
     for word in HARD_HATE_KEYWORDS:
         if word in text:
-            return True
-    for pattern in HARD_HATE_PATTERNS:
-        if re.search(pattern, text):
             return True
     return False
