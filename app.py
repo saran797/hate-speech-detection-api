@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import joblib
 import re
 import os
+from votes import context_vote, textblob_vote, subjectivity_vote, profanity_vote, intensity_vote
 
 app = FastAPI()
 
@@ -10,7 +11,7 @@ app = FastAPI()
 count_vectorizer = joblib.load("vectorizer/count_vectorizer.pkl")
 tfidf_transformer = joblib.load("vectorizer/tfidf_transformer.pkl")
 
-# Load models
+# Load ML models
 models = {
     1: {"name": "SVM", "model": joblib.load("models/svm_hate_speech_model.pkl")},
     2: {"name": "XGBoost", "model": joblib.load("models/xgb_hsd_model.pkl")},
@@ -20,7 +21,6 @@ models = {
 
 class InputData(BaseModel):
     text: str
-    model_id: int
 
 def preprocess(text):
     text = text.lower()
@@ -37,20 +37,37 @@ def read_root():
 def get_models():
     return {k: v["name"] for k, v in models.items()}
 
-@app.post("/predict")
-def predict(data: InputData):
-    if data.model_id not in models:
-        return {"error": "Invalid model ID"}
-
-    model = models[data.model_id]["model"]
+@app.post("/predict_ensemble")
+def predict_ensemble(data: InputData):
     text = preprocess(data.text)
 
+    # Vectorization
     count_vec = count_vectorizer.transform([text])
     tfidf_vec = tfidf_transformer.transform(count_vec)
 
-    prediction = model.predict(tfidf_vec)[0]
-    result = "Hate Speech" if prediction == 1 else "Not Hate Speech"
+    votes = []
+
+    # ML model votes
+    for model_id, model_info in models.items():
+        prediction = model_info["model"].predict(tfidf_vec)[0]
+        label = "hate_speech" if prediction == 1 else "not_hate_speech"
+        votes.append(label)
+
+    # Heuristic rule votes
+    votes.append(context_vote(data.text))
+    votes.append(textblob_vote(data.text))
+    votes.append(subjectivity_vote(data.text))
+    votes.append(profanity_vote(data.text))
+    votes.append(intensity_vote(data.text))
+
+    hate_votes = votes.count("hate_speech")
+    not_hate_votes = votes.count("not_hate_speech")
+
+    final_prediction = "Hate Speech" if hate_votes > not_hate_votes else "Not Hate Speech"
+
     return {
-        "model": models[data.model_id]["name"],
-        "prediction": result
+        "votes": votes,
+        "hate_votes": hate_votes,
+        "not_hate_votes": not_hate_votes,
+        "final_prediction": final_prediction
     }
