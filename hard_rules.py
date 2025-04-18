@@ -23,9 +23,10 @@ HARD_HATE_KEYWORDS = [
 
 
 def is_hard_hate(text: str) -> bool:
-    """Returns True if any hardcoded slurs or patterns are found."""
     text = text.lower()
     for word in HARD_HATE_KEYWORDS:
-        if word in text:
+        # Escape special characters and match whole words using \b (word boundary)
+        if re.search(rf'\b{re.escape(word)}\b', text):
             return True
     return False
+
