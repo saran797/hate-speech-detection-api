@@ -37,7 +37,7 @@ def read_root():
 def get_models():
     return {k: v["name"] for k, v in models.items()}
 
-@app.post("/predict_ensemble")
+@app.post("/predict")
 def predict_ensemble(data: InputData):
     votes = []
     votes.append(intensity_vote(data.text))
