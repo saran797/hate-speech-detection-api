@@ -5,3 +5,6 @@ scikit-learn
 xgboost
 pydantic
 gunicorn
+textblob
+nltk
+beautifulsoup4
