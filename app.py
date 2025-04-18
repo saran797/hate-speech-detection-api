@@ -4,6 +4,7 @@ import joblib
 import re
 import os
 from votes import context_vote, textblob_vote, subjectivity_vote, profanity_vote, intensity_vote
+from hard_rules import is_hard_hate
 
 app = FastAPI()
 
@@ -39,6 +40,14 @@ def get_models():
 
 @app.post("/predict")
 def predict_ensemble(data: InputData):
+    if is_hard_hate(original_text):
+        return {
+            "votes": ["hard_rule_triggered"],
+            "hate_votes": 1,
+            "not_hate_votes": 0,
+            "final_prediction": "Hate Speech (by hard rule)",
+            "rule_triggered": True
+        }
     votes = []
     votes.append(intensity_vote(data.text))
     text = preprocess(data.text)
@@ -63,5 +72,6 @@ def predict_ensemble(data: InputData):
         "votes": votes,
         "hate_votes": hate_votes,
         "not_hate_votes": not_hate_votes,
-        "final_prediction": final_prediction
+        "final_prediction": final_prediction,
+        "rule_triggered": False
     }
