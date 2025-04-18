@@ -40,7 +40,7 @@ def get_models():
 
 @app.post("/predict")
 def predict_ensemble(data: InputData):
-    if is_hard_hate(original_text):
+    if is_hard_hate(data.text):
         return {
             "votes": ["hard_rule_triggered"],
             "hate_votes": 1,
