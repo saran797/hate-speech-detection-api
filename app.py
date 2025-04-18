@@ -39,26 +39,20 @@ def get_models():
 
 @app.post("/predict_ensemble")
 def predict_ensemble(data: InputData):
+    votes = []
+    votes.append(intensity_vote(data.text))
     text = preprocess(data.text)
-
-    # Vectorization
     count_vec = count_vectorizer.transform([text])
     tfidf_vec = tfidf_transformer.transform(count_vec)
-
-    votes = []
-
-    # ML model votes
     for model_id, model_info in models.items():
         prediction = model_info["model"].predict(tfidf_vec)[0]
         label = "hate_speech" if prediction == 1 else "not_hate_speech"
         votes.append(label)
-
-    # Heuristic rule votes
     votes.append(context_vote(data.text))
     votes.append(textblob_vote(data.text))
     votes.append(subjectivity_vote(data.text))
     votes.append(profanity_vote(data.text))
-    votes.append(intensity_vote(data.text))
+   
 
     hate_votes = votes.count("hate_speech")
     not_hate_votes = votes.count("not_hate_speech")
