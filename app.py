@@ -45,7 +45,7 @@ def predict_ensemble(data: InputData):
             "votes": ["hard_rule_triggered"],
             "hate_votes": 1,
             "not_hate_votes": 0,
-            "final_prediction": "Hate Speech (by hard rule)",
+            "final_prediction": "Hate Speech",
             "rule_triggered": True
         }
     votes = []
